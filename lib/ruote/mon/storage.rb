@@ -42,6 +42,8 @@ module Mon
       configurations variables trackers history
     ]
 
+    COLLECTION_PREFIX = "ruote_"
+
     attr_reader :db
 
     def initialize(mongo_db, options={})
@@ -49,17 +51,21 @@ module Mon
       @db = mongo_db
       @options = options
 
-      #collection('msgs').drop_index('_id_')
-        # can't do that...
+      ensure_indexes
 
-      (TYPES - %w[ msgs schedules ]).each do |t|
+      replace_engine_configuration(options)
+    end
+
+    def ensure_indexes
+      TYPES - %w[ msgs schedules ]).each do |t|
         collection(t).ensure_index('_wfid')
         collection(t).ensure_index([ [ '_id', 1 ], [ '_rev', 1 ] ])
       end
       collection('schedules').ensure_index('_wfid')
       collection('schedules').ensure_index('at')
 
-      replace_engine_configuration(options)
+      collection("schedules").ensure_index("at")
+      collection("expressions").ensure_index("fei.wfid")
     end
 
     def get_schedules(delta, now)
@@ -259,9 +265,8 @@ module Mon
     # Given a doc, returns the MongoDB collection it should go to.
     #
     def collection(doc_or_type)
-
-      @db.collection(
-        doc_or_type.is_a?(String) ? doc_or_type : doc_or_type['type'])
+      coll_name = doc_or_type.is_a?(String) ? doc_or_type : doc_or_type['type']
+      @db.collection( COLLECTION_PREFIX + coll_name)
     end
 
     # Given a cursor, applies the count/skip/limit/descending options
@@ -298,7 +303,7 @@ module Mon
 
       # vertical tilde and ogonek to the rescue
 
-      rekey(doc) { |k| k.to_s.gsub(/^\$/, 'ⸯ$').gsub(/\./, '˛') }
+      rekey(doc) { |k| k.to_s.gsub(/^\$/, '~#~').gsub(/\./, '~_~') }
     end
 
     # Prepare the doc for consumption out of MongoDB (takes care of keys
@@ -306,7 +311,7 @@ module Mon
     #
     def from_mongo(docs)
 
-      rekey(docs) { |k| k.gsub(/^ⸯ\$/, '$').gsub(/˛/, '.') }
+      rekey(docs) { |k| k.gsub(/^~#~/, '$').gsub(/~_~/, '.') }
     end
 
     # rekeys hashes and sub-hashes. Simpler than Ruote.deep_mutate
