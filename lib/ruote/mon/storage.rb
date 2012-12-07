@@ -64,7 +64,6 @@ module Mon
       collection('schedules').ensure_index('_wfid')
       collection('schedules').ensure_index('at')
 
-      collection("schedules").ensure_index("at")
       collection("expressions").ensure_index("fei.wfid")
     end
 
