@@ -57,7 +57,7 @@ module Mon
     end
 
     def ensure_indexes
-      TYPES - %w[ msgs schedules ]).each do |t|
+      (TYPES - %w[ msgs schedules ]).each do |t|
         collection(t).ensure_index('_wfid')
         collection(t).ensure_index([ [ '_id', 1 ], [ '_rev', 1 ] ])
       end
